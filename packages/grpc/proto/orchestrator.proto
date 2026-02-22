@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package orchestrator;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service OrchestratorService {
+  // Job Management
+  rpc LaunchJob(LaunchJobRequest) returns (JobDetails);
+  rpc GetJob(GetJobRequest) returns (JobDetails);
+  rpc CancelJob(GetJobRequest) returns (google.protobuf.Empty);
+  
+  // Account & Policy Management
+  rpc UpdateUserStatus(UpdateUserStatusRequest) returns (google.protobuf.Empty);
+  rpc SetUserTier(SetUserTierRequest) returns (google.protobuf.Empty);
+}
+
+// Enums
+enum JobStatus {
+  PENDING = 0;
+  RUNNING = 1;
+  COMPLETED = 2;
+  FAILED = 3;
+  PAUSED = 4;
+}
+
+enum UserTier {
+  FREE = 0;
+  PAID = 1;
+}
+
+enum AccountStatus {
+  ACTIVE = 0;
+  DISABLED = 1;
+}
+
+// Messages
+message LaunchJobRequest {
+  int32 user_id = 1;
+  string target_url = 2;
+  string instructions_json = 3; // Stringified JSON
+}
+
+message GetJobRequest {
+  string job_id = 1;
+}
+
+message JobDetails {
+  string id = 1;
+  int32 user_id = 2;
+  string target_url = 3;
+  JobStatus status = 4;
+  int32 priority = 5;
+  string results_json = 6;
+  string error_message = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message UpdateUserStatusRequest {
+  int32 user_id = 1;
+  AccountStatus status = 2;
+}
+
+message SetUserTierRequest {
+  int32 user_id = 1;
+  UserTier tier = 2;
+}
