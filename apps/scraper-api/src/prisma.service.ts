@@ -1,6 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-import { PrismaLibSql } from '@prisma/adapter-libsql';
+import { PrismaClient, PrismaLibSql } from '@repo/database';
 import 'dotenv/config';
 
 @Injectable()
