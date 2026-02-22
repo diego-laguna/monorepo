@@ -1,0 +1,220 @@
+openapi: 3.0.3
+info:
+  title: Scraper API
+  description: |
+    RESTful API for the scraping platform. Provides user authentication
+    (registration & login via JWT) and a protected endpoint to enqueue
+    web scraping jobs into a Redis-backed BullMQ queue.
+  version: 0.0.1
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /:
+    get:
+      summary: Health check
+      operationId: getHello
+      tags:
+        - App
+      responses:
+        '200':
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelloDto'
+
+  /auth/register:
+    post:
+      summary: Register a new user
+      operationId: register
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input or email already in use
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/login:
+    post:
+      summary: Authenticate user and get JWT
+      operationId: login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /scrape:
+    post:
+      summary: Enqueue a scraping job
+      operationId: queueScrape
+      tags:
+        - Scraping
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScrapeJob'
+      responses:
+        '201':
+          description: Job queued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScrapeResponse'
+        '401':
+          description: Missing or invalid JWT token
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+components:
+  schemas:
+    HelloDto:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Hello World!"
+      required:
+        - message
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: "s3cur3P@ss"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "s3cur3P@ss"
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token (expires in 60 minutes)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      required:
+        - access_token
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+      required:
+        - id
+        - email
+
+    ScrapeJob:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: The target URL to scrape
+          example: "https://example.com"
+        priority:
+          type: integer
+          description: Job priority (derived from user tier)
+          example: 10
+
+    ScrapeResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [PENDING, RUNNING, COMPLETED, FAILED, PAUSED]
+          example: "PENDING"
+        job:
+          $ref: '#/components/schemas/ScrapeJob'
+      required:
+        - status
+        - job
+
+  responses:
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode:
+                type: integer
+                example: 429
+              message:
+                type: string
+                example: "ThrottlerException: Too Many Requests"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from POST /auth/login.
+        Token payload: { email: string, sub: number (user id) }.
+        Expires in 60 minutes.

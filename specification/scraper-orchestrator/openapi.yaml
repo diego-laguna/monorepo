@@ -1,0 +1,157 @@
+openapi: 3.0.3
+info:
+  title: Scraper Orchestrator API
+  description: API for managing and orchestrating web scraping jobs.
+  version: 1.0.0
+servers:
+  - url: https://api.scraper-orchestrator.com/v1
+    description: Production server
+
+paths:
+  /jobs:
+    post:
+      summary: Submit a new scraping job
+      operationId: createJob
+      tags:
+        - User Endpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRequest'
+      responses:
+        '202':
+          description: Job accepted and queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    format: uuid
+        '400':
+          description: Invalid input
+
+  /jobs/{job_id}:
+    get:
+      summary: Get job status and results
+      operationId: getJob
+      tags:
+        - User Endpoints
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '404':
+          description: Job not found
+
+  /internal/callback:
+    post:
+      summary: Callback for the Scraper App to report results
+      operationId: scraperCallback
+      tags:
+        - Internal Endpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScraperResult'
+      responses:
+        '204':
+          description: Result received successfully
+        '401':
+          description: Unauthorized (missing internal token)
+
+components:
+  schemas:
+    JobRequest:
+      type: object
+      required:
+        - target_url
+        - instructions
+      properties:
+        target_url:
+          type: string
+          format: uri
+          example: "https://example.com/products"
+        instructions:
+          type: object
+          properties:
+            selectors:
+              type: object
+              additionalProperties:
+                type: string
+              example: { "title": "h1", "price": ".price" }
+            pagination:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                max_pages:
+                  type: integer
+            wait_time:
+              type: integer
+              description: Delay in milliseconds
+        priority:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+
+    JobResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, RUNNING, COMPLETED, FAILED, PAUSED]
+        created_at:
+          type: string
+          format: date-time
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        error:
+          type: string
+          nullable: true
+
+    ScraperResult:
+      type: object
+      required:
+        - job_id
+        - status
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [COMPLETED, FAILED]
+        data:
+          type: array
+          items:
+            type: object
+        error_message:
+          type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
