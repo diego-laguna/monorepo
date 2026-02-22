@@ -7,8 +7,8 @@ const scraper = new PuppeteerScraper();
 
 // Redis connection settings
 const connection = {
-  host: "localhost",
-  port: 6379,
+  host: process.env.REDIS_HOST || "localhost",
+  port: parseInt(process.env.REDIS_PORT || "6379", 10),
 };
 
 const processJob = async (job: Job<ScrapeJob>) => {
@@ -29,7 +29,7 @@ const processJob = async (job: Job<ScrapeJob>) => {
 
 const main = async () => {
   await scraper.init();
-  logger.info("🚀 Scraper Engine Worker started. Waiting for jobs...");
+  logger.info("Scraper Engine Worker started. Waiting for jobs...");
 
   const worker = new Worker(SCRAPE_QUEUE_NAME, processJob, { connection });
 
@@ -41,7 +41,6 @@ const main = async () => {
     logger.error(`Job ${job?.id} has failed with ${err.message}`);
   });
   
-  // Graceful shutdown
   process.on('SIGINT', async () => {
     await worker.close();
     await scraper.close();
@@ -49,4 +48,4 @@ const main = async () => {
   });
 };
 
-void main();
+main();
