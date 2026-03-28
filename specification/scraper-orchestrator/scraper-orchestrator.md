@@ -43,20 +43,5 @@ Defined in `@repo/grpc/proto/orchestrator.proto`.
 | `UpdateUserStatus` | `UpdateUserStatusRequest` | `Empty` | Disables user and pauses pending jobs. |
 | `SetUserTier` | `SetUserTierRequest` | `Empty` | Updates user tier (FREE/PAID). |
 
-## 5. Job Scheduling & Priority
-The Orchestrator implements a multi-tier scheduling strategy to provide different service levels:
-
-- **Paid Users**: Assigned `priority: 10` (High). Jobs are pushed to the head of the queue or processed by a dedicated pool of high-speed workers.
-- **Free Users**: Assigned `priority: 0` (Standard). Jobs are processed only when no high-priority jobs are pending.
-- **Queue Implementation**: The message broker (e.g., BullMQ) must be configured to respect job priority during worker assignment.
-
-## 5. Account Management Hooks
-To ensure business continuity and policy enforcement:
-
-- **Missing Payments**: If a user's account status changes to `DISABLED`, the Orchestrator must intercept all `PENDING` jobs belonging to that user and update their status to `PAUSED`.
-- **Resumption**: Once the account is re-enabled, `PAUSED` jobs are returned to the `PENDING` state with their original priority.
-
-## 6. Security Requirements
-- **Mutual TLS or Token Auth**: The callback endpoint must be protected so only authorized Scraper Workers can post results.
-- **Payload Validation**: Strict validation of the `instructions` object to prevent command injection in the worker environment.
-- **URL Filtering**: A blocklist of internal IP ranges to prevent SSRF (Server Side Request Forgery).
+## 5. Requirements Reference
+For detailed business, scheduling, and security requirements, refer to the separate [Product Requirements](./requirements.md) document.
